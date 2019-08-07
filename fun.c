@@ -15,7 +15,7 @@ MODULE_VERSION("0.01");
 typedef struct identity {
 //    char name[IDENTITY_NAME_LEN];
     int id;
-//	bool busy;
+    bool busy;
 } identity;
 
 typedef struct node {
@@ -39,6 +39,7 @@ static void identity_create(int id) {
         head = vmalloc(sizeof(node_t));
 	printk(KERN_INFO "Memory allocated!");
         head->obj.id = id;
+	head->obj.busy = false;
         head->next = NULL;
         return;
     }
@@ -88,8 +89,8 @@ static int __init lkm_example_init(void) {
 	identity_create(1);
 	identity_create(2);
 
-	identity_destroy(2);
 	identity_destroy(1);
+	identity_destroy(2);
 
 	printk(KERN_INFO "Fun init!\n");
 
