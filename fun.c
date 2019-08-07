@@ -33,23 +33,26 @@ static node_t *head = NULL;
 static void identity_create(int id) {
     node_t *cur = head;
 
-	printk(KERN_INFO "Creating identity");
     if (head == NULL) {
-	printk(KERN_INFO "Allocating memory");
+	printk(KERN_INFO "Creating first identity: %d", id);
+	printk(KERN_INFO "Allocating memory...");
         head = vmalloc(sizeof(node_t));
-	printk(KERN_INFO "Memory allocated");
+	printk(KERN_INFO "Memory allocated!");
         head->obj.id = id;
         head->next = NULL;
         return;
     }
 
-
     while (cur->next != NULL) {
         cur = cur->next;
     }
 
+	printk(KERN_INFO "Creating identity: %d", id);
+
     /* now we can add a new variable */
+	printk(KERN_INFO "Allocating memory...");
     cur->next = vmalloc(sizeof(node_t));
+	printk(KERN_INFO "Memory allocated!");
     cur->next->obj.id = id;
     cur->next->next = NULL;
 }
@@ -57,7 +60,7 @@ static void identity_create(int id) {
 static void identity_destroy(int id) {
     node_t *cur = head;
 
-    printk(KERN_INFO "Destroying identity");
+    printk(KERN_INFO "Destroying identity: %d", id);
 
     node_t *previous = NULL;
 
@@ -83,7 +86,9 @@ static void identity_destroy(int id) {
 static int __init lkm_example_init(void) {
 
 	identity_create(1);
+	identity_create(2);
 
+	identity_destroy(2);
 	identity_destroy(1);
 
 	printk(KERN_INFO "Fun init!\n");
