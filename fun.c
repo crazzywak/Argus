@@ -3,8 +3,8 @@
 #include <linux/kernel.h>
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Robert W. Oliver II");
-MODULE_DESCRIPTION("A simple example Linux module.");
+MODULE_AUTHOR("Yakir Dorani");
+MODULE_DESCRIPTION("Argus interview");
 MODULE_VERSION("0.01");
 
 //#define IDENTITY_NAME_LEN 15
@@ -57,17 +57,25 @@ static void identity_create(int id) {
 static void identity_destroy(int id) {
     node_t *cur = head;
 
-	printk(KERN_INFO "Destroying identity");
+    printk(KERN_INFO "Destroying identity");
+
+    node_t *previous = NULL;
 
     while (cur != NULL) {
 	node_t *next = cur->next;
 	if (cur->obj.id == id) {
-	printk(KERN_INFO "Freeing memory!");
+		printk(KERN_INFO "Freeing memory!");
 		vfree(cur);
-	printk(KERN_INFO "Memory freed");
-		continue;
+		printk(KERN_INFO "Memory freed");
+		
+		if (previous != NULL) {
+			previous->next=next;
+		}
+
+		break;
 	}
 
+	previous = cur;
         cur = next;
     }
 }
