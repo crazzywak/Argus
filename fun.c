@@ -87,11 +87,14 @@ static void identity_destroy(int id) {
 	printk(KERN_INFO "Destroying identity: %d", id);
 
 	if (n != NULL) {
+		printk(KERN_INFO "Found %d!", n->obj.id);
 		if (n->previous == NULL) {
 			head = n->next;
 		} else {
 			n->previous->next = n->next;
-			n->next->previous = n->previous;
+			if (n->next != NULL) {
+				n->next->previous = n->previous;
+			}
 		}
 
 		vfree(n);
