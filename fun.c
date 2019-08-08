@@ -31,38 +31,47 @@ static node_t *head = NULL;
 //	push(
 //}
 
-static void identity_create(int id) {
-    node_t *cur = head;
-    node_t *prev = NULL;
+static int identity_create(int id) {
+	node_t *cur = head;
+	node_t *prev = NULL;
 
-    if (head == NULL) {
-	printk(KERN_INFO "Creating first identity: %d", id);
-	printk(KERN_INFO "Allocating memory...");
-        head = vmalloc(sizeof(node_t));
-	printk(KERN_INFO "Memory allocated!");
-        head->obj.id = id;
-	head->obj.busy = false;
-	head->previous = NULL;
-        head->next = NULL;
-        return;
-    }
+	if (head == NULL) {
+		// Add first identity
+		printk(KERN_INFO "Creating first identity: %d", id);
+		printk(KERN_INFO "Allocating memory...");
+	        head = vmalloc(sizeof(node_t));
+		if (head == NULL) {
+			return -ENOMEM;
+		}
+		printk(KERN_INFO "Memory allocated!");
+	        head->obj.id = id;
+		head->obj.busy = false;
+		head->previous = NULL;
+	        head->next = NULL;
+	        return 0;
+	}
 
-    while (cur->next != NULL) {
-	prev = cur;
-	cur = cur->next;
-    }
+	while (cur->next != NULL) {
+		prev = cur;
+		cur = cur->next;
+	}
 
 	printk(KERN_INFO "Creating identity: %d", id);
 
-    /* now we can add a new variable */
+	// Add a new identity
 	printk(KERN_INFO "Allocating memory...");
 	cur->next = vmalloc(sizeof(node_t));
+	if (cur->next == NULL) {
+		return -ENOMEM;
+	}
 	printk(KERN_INFO "Memory allocated!");
 	cur->previous = prev;
 	cur->next->obj.id = id;
 	cur->next->obj.busy = false;
 	cur->next->next = NULL;
 	cur->next->previous = cur;
+
+	return 0;
 }
 
 static node_t * identity_find(int id) {
@@ -102,22 +111,39 @@ static void identity_destroy(int id) {
 	}
 }
 
-static int __init lkm_example_init(void) {
+static int __init argus_init(void) {
 
-	identity_create(1);
-	identity_create(2);
+	int err;
+	err = identity_create(1);
+	if (err) goto fail_this;
+	err = identity_create(2);
+	if (err) goto fail_this;
 
 	identity_destroy(1);
 	identity_destroy(2);
 
 	printk(KERN_INFO "Fun init!\n");
 
-        return 0;
+        return 0; /* success */
+
+	fail_this: 
+	argus_exit();
+	return err; /* propagate the error */
 }
 
-static void __exit lkm_example_exit(void) {
- printk(KERN_INFO "Fun, exit!\n");
+static void __exit argus_exit(void) {
+	printk(KERN_INFO "Cleaning up all identities...\n");
+
+       	node_t *cur = head;
+
+	while (cur != NULL) {
+		node_t *next = cur->next;
+		vfree(cur);
+        	cur = next;
+	}
+
+	printk(KERN_INFO "Goodbye!\n");
 }
 
-module_init(lkm_example_init);
-module_exit(lkm_example_exit);
+module_init(argus_init);
+module_exit(argus_exit);
