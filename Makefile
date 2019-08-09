@@ -1,3 +1,4 @@
+CFLAGS_id.o := -DDEBUG
 obj-m += fun.o
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules

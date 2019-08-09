@@ -7,139 +7,97 @@ MODULE_AUTHOR("Yakir Dorani");
 MODULE_DESCRIPTION("Argus interview");
 MODULE_VERSION("0.01");
 
-//#define IDENTITY_NAME_LEN 15
-
-//typedef int bool;
-//enum { false, true };
+#define IDENTITY_NAME_LEN 15
 
 typedef struct identity {
-//    char name[IDENTITY_NAME_LEN];
+    char name[IDENTITY_NAME_LEN];
     int id;
     bool busy;
+    struct list_head list;
 } identity;
 
-typedef struct node {
-    identity obj;
-    struct node *previous;
-    struct node *next;
-} node_t;
+static LIST_HEAD(identity_list);
 
+static identity* identity_find(int id) {
+        struct identity *cur;
+        pr_debug("Finding identity: %d", id);
+        list_for_each_entry(cur, &identity_list, list) {
+                if (cur->id == id)
+                        return cur;
+        }
 
-static node_t *head = NULL;
+        pr_debug("Identity %d not found!", id);
 
-//static void identity_create(char str[20] name, int id) {
-//	push(
-//}
-
-static int identity_create(int id) {
-	node_t *cur = head;
-	node_t *prev = NULL;
-
-	if (head == NULL) {
-		// Add first identity
-		printk(KERN_INFO "Creating first identity: %d", id);
-		printk(KERN_INFO "Allocating memory...");
-	        head = vmalloc(sizeof(node_t));
-		if (head == NULL) {
-			return -ENOMEM;
-		}
-		printk(KERN_INFO "Memory allocated!");
-	        head->obj.id = id;
-		head->obj.busy = false;
-		head->previous = NULL;
-	        head->next = NULL;
-	        return 0;
-	}
-
-	while (cur->next != NULL) {
-		prev = cur;
-		cur = cur->next;
-	}
-
-	printk(KERN_INFO "Creating identity: %d", id);
-
-	// Add a new identity
-	printk(KERN_INFO "Allocating memory...");
-	cur->next = vmalloc(sizeof(node_t));
-	if (cur->next == NULL) {
-		return -ENOMEM;
-	}
-	printk(KERN_INFO "Memory allocated!");
-	cur->previous = prev;
-	cur->next->obj.id = id;
-	cur->next->obj.busy = false;
-	cur->next->next = NULL;
-	cur->next->previous = cur;
-
-	return 0;
+        return NULL;
 }
 
-static node_t * identity_find(int id) {
-    node_t *cur = head;
-    
-    printk(KERN_INFO "Finding identity: %d", id);
+static int identity_create(char *name, int id) {
+	identity *temp;
+	int retval = -EINVAL;
 
-    while (cur != NULL) {
-	node_t *next = cur->next;
-	if (cur->obj.id == id) {
-		printk(KERN_INFO "Found identity! %d", id);
-		return cur;
-	}
+	if (identity_find(id))
+		goto out;
 
-        cur = next;
-    }
+	temp = vmalloc(sizeof(identity));
+	if (!temp)
+		goto out;
 
-	printk(KERN_INFO "Identity %d not found!", id);
-	return NULL;
+	strncpy(temp->name, name, IDENTITY_NAME_LEN);
+	temp->name[IDENTITY_NAME_LEN-1] = '\0';
+	temp->id = id;
+	temp->busy = false;
+	list_add(&(temp->list), &identity_list);
+	retval = 0;
+
+	pr_debug("identity %d: %s created\n", id, name);
+
+	out:	return retval;
 }
 
 static void identity_destroy(int id) {
-	printk(KERN_INFO "Destroying identity: %d", id);
-	node_t *n = identity_find(id);
+	identity *temp;
+	pr_debug("Destroying identity: %d", id);
+	temp = identity_find(id);
 
-	if (n != NULL) {
-		printk(KERN_INFO "Freeing %d!", n->obj.id);
-		if (n->previous == NULL) {
-			head = n->next;
-		} else {
-			n->previous->next = n->next;
-		}
+	if (!temp)
+		return;
 
-		if (n->next != NULL) {
-			n->next->previous = n->previous;
-		}
+	pr_debug("destroying identity %i: %s\n", temp->id, temp->name);
 
-		vfree(n);
-		printk(KERN_INFO "Memory freed");
-	}
+	list_del(&(temp->list));
+	vfree(temp);
+
+	return;
 }
 
 static void __exit argus_exit(void) {
-	if (head != NULL) {
-	        node_t *cur = head;
-	
-	        printk(KERN_INFO "Cleaning up all identities...\n");
-	        while (cur != NULL) {
-	                node_t *next = cur->next;
-	                vfree(cur);
-	                cur = next;
-	        }
-	}
+	identity* cur;
+	pr_debug("Cleaning everything...\n");
+	list_for_each_entry(cur, &identity_list, list) {
+		vfree(cur);
+        }
 
-        printk(KERN_INFO "Goodbye!\n");
+        pr_debug("Goodbye!\n");
 }
 
 static int __init argus_init(void) {
 
 	int err;
-	err = identity_create(1);
+	identity* ret;
+	err = identity_create("Alice", 1);
 	if (err) goto fail_this;
-	err = identity_create(2);
+	err = identity_create("Bob", 2);
 	if (err) goto fail_this;
-	err = identity_create(3);
+	err = identity_create("Dave", 3);
 	if (err) goto fail_this;
-	err = identity_create(10);
+	err = identity_create("Gena", 10);
 	if (err) goto fail_this;
+
+	ret = identity_find(3);
+	pr_debug("id 3 = %s\n", ret->name);
+	ret = identity_find(42);
+	if (ret == NULL)
+		pr_debug("id 42 not found\n");
 
 	identity_destroy(2);
 	identity_destroy(1);
@@ -147,7 +105,7 @@ static int __init argus_init(void) {
 	identity_destroy(42);
 	identity_destroy(3);
 
-	printk(KERN_INFO "Fun init!\n");
+	pr_debug("Fun init!\n");
 
         return 0; /* success */
 
