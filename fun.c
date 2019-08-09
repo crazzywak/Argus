@@ -1,6 +1,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/slab.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Yakir Dorani");
@@ -17,6 +18,8 @@ typedef struct identity {
 } identity;
 
 static LIST_HEAD(identity_list);
+
+static struct kmem_cache *identity_cache;
 
 static identity* identity_find(int id) {
         identity *cur;
@@ -40,11 +43,10 @@ static int identity_create(char *name, int id) {
 	if (identity_find(id))
 		return -EINVAL;
 
-	// I used vmalloc instead of kmalloc because I suppose
-	// allocating contiguous memory is unnecessary.
-	temp = vmalloc(sizeof(identity));
-	if (!temp)
+	temp = kmem_cache_alloc(identity_cache, GFP_KERNEL);
+	if (!temp) {
 		return -ENOMEM;
+	}
 
 	strncpy(temp->name, name, IDENTITY_NAME_LEN);
 	temp->name[IDENTITY_NAME_LEN-1] = '\0';
@@ -66,19 +68,33 @@ static void identity_destroy(int id) {
 		return;
 
 	list_del(&(item->list));
-	vfree(item); 
+	kmem_cache_free(identity_cache, item);
 	pr_debug("Identity %d destroyed!\n", id);
 }
 
 static void argus_exit(void) {
 	identity* cur;
 	pr_debug("Cleaning everything...\n");
-	list_for_each_entry(cur, &identity_list, list) {
-		pr_debug("Destroying %d\n", cur->id);
-		vfree(cur);
-        }
+	if (identity_cache) {
+		pr_debug("Destroying cache...\n");
+
+		// If the list is not empty, kmem_cache_destroy will fail.
+	        list_for_each_entry(cur, &identity_list, list) {
+	        	kmem_cache_free(identity_cache, cur);
+	        }
+
+		kmem_cache_destroy(identity_cache);
+		pr_debug("Cache destroyed!\n");
+	}
 
         pr_debug("Goodbye!\n");
+}
+
+// I added a constructor in order to prevent slab merging so it's
+// visible in /proc/slabinfo due to the exercise's instructions.
+static void identity_constructor(void *addr)
+{
+    memset(addr, 0, sizeof(identity));
 }
 
 static int __init argus_init(void) {
@@ -87,6 +103,12 @@ static int __init argus_init(void) {
 	identity* ret;
 
 	pr_debug("Argus exercise init!\n");
+
+	identity_cache = kmem_cache_create("identity",
+					   sizeof(identity),
+					   0, 0, identity_constructor);
+	if (!identity_cache)
+		return -ENOMEM;
 
 	// I quit after failed allocations after reading
 	// https://www.oreilly.com/library/view/linux-device-drivers/0596000081/ch02s04.html
