@@ -1,6 +1,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/slab.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Yakir Dorani");
@@ -17,6 +18,8 @@ typedef struct identity {
 } identity;
 
 static LIST_HEAD(identity_list);
+
+static struct kmem_cache *identity_cache;
 
 static identity* identity_find(int id) {
         struct identity *cur;
@@ -40,9 +43,10 @@ static int identity_create(char *name, int id) {
 	if (identity_find(id))
 		goto out;
 
-	temp = vmalloc(sizeof(identity));
-	if (!temp)
+	temp = kmem_cache_alloc(identity_cache, GFP_KERNEL);
+	if (!temp) {
 		goto out;
+	}
 
 	strncpy(temp->name, name, IDENTITY_NAME_LEN);
 	temp->name[IDENTITY_NAME_LEN-1] = '\0';
@@ -66,17 +70,20 @@ static void identity_destroy(int id) {
 		return;
 
 	list_del(&(item->list));
-	vfree(item);
+	kmem_cache_free(identity_cache, item);
 }
 
 static void __exit argus_exit(void) {
-	identity* cur;
 	pr_debug("Cleaning everything...\n");
-	list_for_each_entry(cur, &identity_list, list) {
-		vfree(cur);
-        }
+	if (identity_cache)
+		kmem_cache_destroy(identity_cache);
 
         pr_debug("Goodbye!\n");
+}
+
+static void identity_constructor(void *addr)
+{
+    memset(addr, 0, sizeof(identity));
 }
 
 static int __init argus_init(void) {
@@ -85,6 +92,12 @@ static int __init argus_init(void) {
 	identity* ret;
 
 	pr_debug("Argus exercise init!\n");
+
+	identity_cache = kmem_cache_create("identity",
+					   sizeof(struct identity),
+					   0, 0, identity_constructor);
+	if (!identity_cache)
+		return -ENOMEM;
 
 	err = identity_create("Alice", 1);
 	if (err) goto fail_this;
