@@ -103,9 +103,10 @@ static void identity_destroy(int id) {
 			head = n->next;
 		} else {
 			n->previous->next = n->next;
-			if (n->next != NULL) {
-				n->next->previous = n->previous;
-			}
+		}
+
+		if (n->next != NULL) {
+			n->next->previous = n->previous;
 		}
 
 		vfree(n);
