@@ -88,6 +88,8 @@ static node_t * identity_find(int id) {
 
         cur = next;
     }
+
+    return NULL;
 }
 
 static void identity_destroy(int id) {
@@ -111,6 +113,19 @@ static void identity_destroy(int id) {
 	}
 }
 
+static void __exit argus_exit(void) {
+        node_t *cur = head;
+
+        printk(KERN_INFO "Cleaning up all identities...\n");
+        while (cur != NULL) {
+                node_t *next = cur->next;
+                vfree(cur);
+                cur = next;
+        }
+
+        printk(KERN_INFO "Goodbye!\n");
+}
+
 static int __init argus_init(void) {
 
 	int err;
@@ -129,20 +144,6 @@ static int __init argus_init(void) {
 	fail_this: 
 	argus_exit();
 	return err; /* propagate the error */
-}
-
-static void __exit argus_exit(void) {
-	printk(KERN_INFO "Cleaning up all identities...\n");
-
-       	node_t *cur = head;
-
-	while (cur != NULL) {
-		node_t *next = cur->next;
-		vfree(cur);
-        	cur = next;
-	}
-
-	printk(KERN_INFO "Goodbye!\n");
 }
 
 module_init(argus_init);
