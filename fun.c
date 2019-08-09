@@ -89,16 +89,16 @@ static node_t * identity_find(int id) {
         cur = next;
     }
 
-    return NULL;
+	printk(KERN_INFO "Identity %d not found!", id);
+	return NULL;
 }
 
 static void identity_destroy(int id) {
+	printk(KERN_INFO "Destroying identity: %d", id);
 	node_t *n = identity_find(id);
 
-	printk(KERN_INFO "Destroying identity: %d", id);
-
 	if (n != NULL) {
-		printk(KERN_INFO "Found %d!", n->obj.id);
+		printk(KERN_INFO "Freeing %d!", n->obj.id);
 		if (n->previous == NULL) {
 			head = n->next;
 		} else {
@@ -115,14 +115,16 @@ static void identity_destroy(int id) {
 }
 
 static void __exit argus_exit(void) {
-        node_t *cur = head;
-
-        printk(KERN_INFO "Cleaning up all identities...\n");
-        while (cur != NULL) {
-                node_t *next = cur->next;
-                vfree(cur);
-                cur = next;
-        }
+	if (head != NULL) {
+	        node_t *cur = head;
+	
+	        printk(KERN_INFO "Cleaning up all identities...\n");
+	        while (cur != NULL) {
+	                node_t *next = cur->next;
+	                vfree(cur);
+	                cur = next;
+	        }
+	}
 
         printk(KERN_INFO "Goodbye!\n");
 }
@@ -134,9 +136,16 @@ static int __init argus_init(void) {
 	if (err) goto fail_this;
 	err = identity_create(2);
 	if (err) goto fail_this;
+	err = identity_create(3);
+	if (err) goto fail_this;
+	err = identity_create(10);
+	if (err) goto fail_this;
 
-	identity_destroy(1);
 	identity_destroy(2);
+	identity_destroy(1);
+	identity_destroy(10);
+	identity_destroy(42);
+	identity_destroy(3);
 
 	printk(KERN_INFO "Fun init!\n");
 
