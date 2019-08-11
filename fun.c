@@ -70,7 +70,7 @@ static void identity_destroy(int id) {
 	pr_debug("Identity %d destroyed!\n", id);
 }
 
-static void __exit argus_exit(void) {
+static void argus_exit(void) {
 	identity* cur;
 	pr_debug("Cleaning everything...\n");
 	list_for_each_entry(cur, &identity_list, list) {
