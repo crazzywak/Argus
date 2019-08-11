@@ -40,6 +40,8 @@ static int identity_create(char *name, int id) {
 	if (identity_find(id))
 		return -EINVAL;
 
+	// I used vmalloc instead of kmalloc because I suppose
+	// allocating contiguous memory is unnecessary.
 	temp = vmalloc(sizeof(identity));
 	if (!temp)
 		return -ENOMEM;
@@ -64,7 +66,7 @@ static void identity_destroy(int id) {
 		return;
 
 	list_del(&(item->list));
-	vfree(item);
+	vfree(item); 
 	pr_debug("Identity %d destroyed!\n", id);
 }
 
@@ -86,6 +88,8 @@ static int __init argus_init(void) {
 
 	pr_debug("Argus exercise init!\n");
 
+	// I quit after failed allocations after reading
+	// https://www.oreilly.com/library/view/linux-device-drivers/0596000081/ch02s04.html
 	err = identity_create("Alice", 1);
 	if (err == -ENOMEM) goto fail_this;
 	err = identity_create("Bob", 2);
