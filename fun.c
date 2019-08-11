@@ -72,6 +72,7 @@ static void __exit argus_exit(void) {
 	identity* cur;
 	pr_debug("Cleaning everything...\n");
 	list_for_each_entry(cur, &identity_list, list) {
+		pr_debug("Destroying %d\n", cur->id);
 		vfree(cur);
         }
 
