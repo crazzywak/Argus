@@ -19,7 +19,7 @@ typedef struct identity {
 static LIST_HEAD(identity_list);
 
 static identity* identity_find(int id) {
-        struct identity *cur;
+        identity *cur;
         pr_debug("Finding identity: %d", id);
         list_for_each_entry(cur, &identity_list, list) {
                 if (cur->id == id) {
@@ -35,26 +35,24 @@ static identity* identity_find(int id) {
 
 static int identity_create(char *name, int id) {
 	identity *temp;
-	int retval = -EINVAL;
 
+	pr_debug("Creating identity %d ...\n", id);
 	if (identity_find(id))
-		goto out;
+		return -EINVAL;
 
 	temp = vmalloc(sizeof(identity));
 	if (!temp)
-		goto out;
+		return -ENOMEM;
 
 	strncpy(temp->name, name, IDENTITY_NAME_LEN);
 	temp->name[IDENTITY_NAME_LEN-1] = '\0';
 	temp->id = id;
 	temp->busy = false;
 	list_add(&(temp->list), &identity_list);
-	retval = 0;
 
-	pr_debug("identity %d: %s created\n", id, name);
+	pr_debug("Identity %d: %s created!\n", id, name);
 
-	out:
-	return retval;
+	return 0;
 }
 
 static void identity_destroy(int id) {
@@ -67,6 +65,7 @@ static void identity_destroy(int id) {
 
 	list_del(&(item->list));
 	vfree(item);
+	pr_debug("Identity %d destroyed!\n", id);
 }
 
 static void __exit argus_exit(void) {
@@ -87,13 +86,13 @@ static int __init argus_init(void) {
 	pr_debug("Argus exercise init!\n");
 
 	err = identity_create("Alice", 1);
-	if (err) goto fail_this;
+	if (err == -ENOMEM) goto fail_this;
 	err = identity_create("Bob", 2);
-	if (err) goto fail_this;
+	if (err == -ENOMEM) goto fail_this;
 	err = identity_create("Dave", 3);
-	if (err) goto fail_this;
+	if (err == -ENOMEM) goto fail_this;
 	err = identity_create("Gena", 10);
-	if (err) goto fail_this;
+	if (err == -ENOMEM) goto fail_this;
 
 	ret = identity_find(3);
 	pr_debug("id 3 = %s\n", ret->name);
